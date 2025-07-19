@@ -1,5 +1,9 @@
 # LLM Diagnosis Recommender
 
+## Project Documentation
+
+For detailed information about the project, please refer to our [Full Documentation](docs/project_documentation.md).
+
 ## Project Overview
 
 This project demonstrates an **LLM-powered system for diagnosing anomalies in sensor data and recommending solutions**. It's designed to help technicians quickly understand complex issues and get actionable steps for resolution, directly from their data.
@@ -128,3 +132,61 @@ The `notebooks/anomaly_detection.ipynb` can be used for deeper data exploration 
 *   **`Ollama call failed with status code 404`**: Ensure Ollama is installed, running, and you have downloaded the `mistral` model using `ollama pull mistral`.
 *   **Slow LLM response**: Consider downloading a more quantized Mistral model (e.g., `mistral:7b-instruct-v0.2-q4_K_M`) and ensure Ollama is utilizing your GPU if available. Refer to Ollama documentation for GPU setup.
 
+The error message `cudaMalloc failed: out of memory` is very specific and crucial: it means that your **GPU (Graphics Processing Unit) ran out of dedicated memory (VRAM)** when Ollama tried to load and run the `phi` model.
+
+Even though `phi` is a smaller model, LLMs still require significant VRAM, especially during inference.
+
+Here's how you can address this to reduce memory usage and hopefully get the LLM report generation working:
+
+### 1. Use a More Quantized Model (Most Effective)
+
+The best way to reduce VRAM usage is to use a model that has been "quantized" more aggressively. Quantization reduces the precision of the model's weights, making it smaller and faster, with a slight trade-off in accuracy (often imperceptible for many tasks).
+
+*   **Try a highly quantized `phi` model:** While `ollama pull phi` usually pulls a default quantization, you can explicitly ask for a smaller one if available. You'd need to check Ollama's model library or tags for specific `phi` quantizations.
+    *   If you're still using `mistral`, you can definitely get more quantized versions:
+        ```bash
+        ollama pull mistral:7b-instruct-v0.2-q4_K_M
+        # or even smaller, if available and acceptable quality:
+        ollama pull mistral:7b-instruct-v0.2-q2_K
+        ```
+    *   You can explore available quantizations on the [Ollama models page](https://ollama.com/models) or by running `ollama run MODEL_NAME:?` (e.g., `ollama run mistral:?`) to see tags.
+*   **Update `llm/langchain_agent.py`**: If you download a specific quantized model, remember to update the `model_name` in your `llm/langchain_agent.py` file accordingly:
+    ```python
+    # In llm/langchain_agent.py
+    class LLMAgent:
+        def __init__(self, model_name: str = "mistral:7b-instruct-v0.2-q4_K_M", base_url: str = "http://localhost:11434"):
+            self.llm = Ollama(model=model_name, base_url=base_url)
+    ```
+
+### 2. Reduce LLM Output Length (Less VRAM during generation)
+
+Shorter responses from the LLM require less memory during the generation process.
+
+*   **Limit `num_predict` in `llm/langchain_agent.py`**:
+    ```python
+    # In llm/langchain_agent.py within the __init__ method for self.llm
+    self.llm = Ollama(model=model_name, base_url=base_url, num_predict=128) # Adjust 128 as needed
+    ```
+    This sets a maximum token limit for the LLM's output.
+
+### 3. Free up GPU Memory
+
+*   **Close other GPU-intensive applications:** Games, video editors, other AI/ML applications, or even too many browser tabs using hardware acceleration can consume VRAM. Close them before running the Streamlit app.
+*   **Restart your computer:** Sometimes VRAM isn't fully released by applications even after they're closed. A restart can clear it.
+
+### 4. Force Ollama to Run on CPU (If VRAM is consistently an issue)
+
+If your GPU simply doesn't have enough VRAM for any model, you can force Ollama to run on your CPU. This will be **significantly slower** but might be your only option if VRAM is very limited.
+
+*   **Set `OLLAMA_ORIGINS` environment variable (temporary in terminal):**
+    ```bash
+    # For Windows Command Prompt:
+    set OLLAMA_ORIGINS=cpu
+    # Then run your Streamlit app from the same terminal:
+    streamlit run app/app.py
+    ```
+    *   **Note:** This is a temporary setting for the current terminal session. To make it permanent, you'd set it as a system-wide environment variable.
+
+**Recommendation:**
+
+Start by pulling a more quantized version of the model you intend to use (e.g., `mistral:7b-instruct-v0.2-q4_K_M` if you're using Mistral, or look for quantized `phi` versions), and update `llm/langchain_agent.py`. Then, ensure no other heavy applications are using your GPU.
