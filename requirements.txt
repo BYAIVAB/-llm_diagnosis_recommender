@@ -1,0 +1,11 @@
+pandas
+numpy
+scikit-learn
+torch
+transformers
+langchain
+streamlit
+matplotlib
+faiss-cpu
+python-dotenv
+langchain-community
