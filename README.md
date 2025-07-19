@@ -16,18 +16,18 @@ Here's a high-level overview of how the different components of this system inte
 
 ```mermaid
 graph TD
-    User[User] -- Interacts with --> StreamlitApp[Streamlit App (app/app.py)]
+    User[User] --> StreamlitApp[Streamlit Application]
 
-    StreamlitApp -- Uploads/Uses --> DataCSV[Sensor Data (data/sample_sensor_data.csv)]
+    StreamlitApp -- Uploads/Uses --> DataCSV[Sensor Data]
 
     subgraph Data Processing & Anomaly Detection
-        DataCSV -- Fed into --> AnomalyDetectionCode[Anomaly Detection Code (in app/app.py & notebooks/)]
-        AnomalyDetectionCode -- Identified Anomalies --> AnomalyResults[Anomaly Results]
+        DataCSV -- Fed into --> AnomalyDetection[Anomaly Detection Code]
+        AnomalyDetection -- Identified Anomalies --> AnomalyResults[Anomaly Results]
     end
 
     subgraph LLM-Powered Diagnosis & Recommendation
-        AnomalyResults -- Passed to --> LLMAgent[LLM Agent (llm/langchain_agent.py)]
-        LLMAgent -- Uses Prompts from --> PromptTemplates[Prompt Templates (llm/prompt_templates.py)]
+        AnomalyResults -- Passed to --> LLMAgent[LLM Agent]
+        LLMAgent -- Uses Prompts from --> PromptTemplates[Prompt Templates]
         LLMAgent -- Communicates with --> OllamaRuntime[Ollama Runtime]
         OllamaRuntime -- Hosts & Runs --> MistralModel[Mistral-7B Model]
         MistralModel -- Generates --> DiagnosisAndRecs[Diagnosis & Recommendations]
